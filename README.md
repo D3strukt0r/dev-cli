@@ -1,2 +1,2 @@
 ## Usage (development)
-`cargo run -- <command>
+`cargo run -- <command>`
