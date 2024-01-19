@@ -48,9 +48,19 @@ enum Command {
     /// Starts a dev-cli project
     Start,
     /// Stop and remove the containers of a project. Does not lose or harm anything unless you add --remove-data.
-    Stop,
+    Stop {
+        #[clap(long, default_value("false"))]
+        remove_data: bool,
+    },
 }
 
 fn main() {
+    use Command::*;
+
     let args = Args::parse();
+    match args.command {
+        Stop { remove_data: false } => println!("Stopping without removing data..."),
+        Stop { remove_data: true } => println!("Stopping with removing data..."),
+        _ => println!("Doing something else than stopping..."),
+    }
 }
