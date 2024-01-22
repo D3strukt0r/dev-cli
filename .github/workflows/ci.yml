@@ -1,0 +1,33 @@
+name: Rust
+
+on:
+  push:
+    # Publish latest or develop branch as prerelease.
+    branches: [ master, develop ]
+    # Publish semver tags as releases.
+    tags: [ '*.*.*' ]
+    # and only if one of these files changed.
+    paths:
+      - .github/workflows/ci.yml
+      - 'src/**'
+      - Cargo.lock
+      - Cargo.toml
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Build
+      run: cargo build --verbose
+
+    - name: Run tests
+      run: cargo test --verbose
