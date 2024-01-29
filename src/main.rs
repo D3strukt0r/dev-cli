@@ -104,23 +104,48 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
     // TODO: Get config based on global, user, project, and local config files
 
     // Connect to Docker
-    // TODO: Check if command requires docker connection before connecting
+    // TODO: Check if command requires a docker connection before connecting
     let docker = bollard::Docker::connect_with_local_defaults()?;
     match docker.ping().await {
         Ok(result) => result,
         Err(error) => {
-            println!("Docker doesn't seem to be turned on");
+            println!("Docker doesn't seem to be turned on ({})", error);
             sysexits::ExitCode::OsErr.exit()
             //Err(anyhow::anyhow!("Docker doesn't seem to be turned on ({})", error))
         },
     };
 
-    //use Commands::*;
-    //match cli.command {
-    //    Stop { remove_data: false } => println!("Stopping without removing data..."),
-    //    Stop { remove_data: true } => println!("Stopping with removing data..."),
-    //    _ => println!("Doing something else than stopping..."),
-    //}
+    // Find and read the docker `compose.yml` file
+    // TODO: Check if command requires knowledge of the compose config
+    let docker_compose_config_path = std::path::Path::new(&project_root).join("compose.yml");
+    let docker_compose = if docker_compose_config_path.is_file() {
+        utils::docker_compose::DockerCompose::new(docker_compose_config_path)
+    } else {
+        println!("Could not find a docker compose file in the project root ({})", docker_compose_config_path.display());
+        sysexits::ExitCode::OsErr.exit()
+    };
+    let docker_compose_config = match docker_compose.config() {
+        Ok(config) => config,
+        Err(error) => {
+            println!("Could not read the docker compose file ({})", error);
+            sysexits::ExitCode::OsErr.exit()
+        },
+    };
+
+    use Commands::*;
+    match cli.command {
+        Some(command) => {
+            match command {
+                Stop { remove_data: false } => println!("Stopping without removing data..."),
+                Stop { remove_data: true } => println!("Stopping with removing data..."),
+                _ => println!("Doing something else than stopping..."),
+            }
+        },
+        None => {
+            println!("Not implemented yet, pass \"exec_command\" to a runner function");
+            sysexits::ExitCode::OsErr.exit()
+        },
+    }
 
     Ok(sysexits::ExitCode::Ok)
 }
