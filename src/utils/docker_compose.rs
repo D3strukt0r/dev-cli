@@ -20,6 +20,7 @@ impl DockerCompose {
             std::process::Command::new("sh")
                 .arg("-c")
                 .arg("docker compose config")
+                .current_dir(&self.file.parent().unwrap())
                 .output()
         };
         let output = match output_cmd {
@@ -39,8 +40,22 @@ impl DockerCompose {
         let config = serde_yaml::from_str::<Config>(config_string);
         config
     }
+
+    pub fn exec(&self, service: Option<String>, command: Vec<String>) {
+        let service_to_exec = match service {
+            Some(service) => service,
+            None => {
+                let config = self.config().unwrap();
+                let first_service = config.services.keys().next().unwrap();
+                first_service.to_string()
+            },
+        };
+
+        println!("TODO: docker compose exec -i -t {} sh -c '{}'", service_to_exec, command.join(" "));
+    }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 pub struct Config {
     name: String,
@@ -50,6 +65,7 @@ pub struct Config {
     secrets: Option<std::collections::BTreeMap<String, Secret>>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 struct Service {
     // TODO: Check "https://serde.rs/string-or-struct.html" for how to handle "build"
@@ -67,12 +83,14 @@ struct Service {
     volumes: Option<Vec<ServiceVolume>>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 struct ServiceDependsOn {
     condition: String,
     required: bool
 }
 
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 struct ServicePorts {
     mode: String,
@@ -81,11 +99,13 @@ struct ServicePorts {
     protocol: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 struct ServiceSecret {
     source: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 struct ServiceVolume {
     #[serde(rename = "type")]
@@ -97,17 +117,20 @@ struct ServiceVolume {
     volume: Option<std::collections::BTreeMap<String, String>>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 struct ServiceVolumeBind {
     create_host_path: bool,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 struct Network {
     name: String,
     external: Option<bool>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 struct Volume {
     name: String,
@@ -115,6 +138,7 @@ struct Volume {
     external: Option<bool>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 struct Secret {
     name: String,

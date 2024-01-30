@@ -1,4 +1,5 @@
 mod utils;
+mod commands;
 
 use clap::Parser;
 
@@ -15,8 +16,8 @@ struct Cli {
     exec_command: Vec<String>,
 }
 
-#[derive(Debug, clap::Subcommand)]
-enum Commands {
+#[derive(Debug, clap::Subcommand, PartialEq)]
+pub enum Commands {
     // Removes items dev-cli has created
     //Clean,
     // Generate the autocompletion script for the specified shell
@@ -28,7 +29,12 @@ enum Commands {
     // Get a detailed description of a running dev-cli project
     //Describe,
     /// Execute a shell command in the container for a service.
-    Exec,
+    Exec {
+        #[arg(short, long)]
+        service: Option<String>,
+
+        command: Vec<String>
+    },
     // Dump a database to a file or to stdout
     //ExportDb,
     // Get/Download a 3rd party add-on (service, provider, etc.)
@@ -70,7 +76,6 @@ const CONFIG_FILE_NAME_PROJECT: &str = ".dev-cli.dist.yml";
 async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
     // Parse the command line arguments and stop here if there's an error
     let cli = Cli::parse();
-    dbg!(&cli);
 
     // Find .dev-cli.yml/.dev-cli.dist.yml in the current directory or any
     // parent directory to determine the project root
@@ -135,15 +140,18 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
     use Commands::*;
     match cli.command {
         Some(command) => {
-            match command {
-                Stop { remove_data: false } => println!("Stopping without removing data..."),
-                Stop { remove_data: true } => println!("Stopping with removing data..."),
-                _ => println!("Doing something else than stopping..."),
+            match &command {
+                Exec { service, command } => commands::exec::run(docker_compose, service.to_owned(), command.to_vec()),
+                //Stop { remove_data: false } => println!("Stopping without removing data..."),
+                //Stop { remove_data: true } => println!("Stopping with removing data..."),
+                _ => {
+                    println!("Command not implemented yet: {:?}", command);
+                    sysexits::ExitCode::OsErr.exit()
+                },
             }
         },
         None => {
-            println!("Not implemented yet, pass \"exec_command\" to a runner function");
-            sysexits::ExitCode::OsErr.exit()
+            commands::exec::run(docker_compose, cli.service.to_owned(), cli.exec_command);
         },
     }
 
