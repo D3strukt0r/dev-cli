@@ -41,7 +41,7 @@ impl DockerCompose {
         config
     }
 
-    pub fn exec(&self, service: Option<String>, command: Vec<String>) {
+    pub fn exec(&self, service: Option<String>, command: Vec<String>) -> Result<(), Box<dyn std::error::Error>>{
         let service_to_exec = match service {
             Some(service) => service,
             None => {
@@ -51,7 +51,19 @@ impl DockerCompose {
             },
         };
 
-        println!("TODO: docker compose exec -i -t {} sh -c '{}'", service_to_exec, command.join(" "));
+        if cfg!(target_os = "windows") {
+            panic!("Windows is not supported yet")
+            //std::process::Command::new("cmd")
+            //    .args(["/C", "echo hello"])
+            //    .output()
+        } else {
+            subprocess::Exec::cmd("docker").arg("compose").arg("exec")
+                .arg(service_to_exec)
+                .args(&command)
+                .cwd(&self.file.parent().unwrap())
+                .join()?
+        };
+        Ok(())
     }
 }
 
