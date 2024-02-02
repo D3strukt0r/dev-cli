@@ -1,5 +1,8 @@
-mod utils;
+#[macro_use]
+extern crate lazy_static;
+
 mod commands;
+mod utils;
 
 use clap::Parser;
 
@@ -33,7 +36,7 @@ pub enum Commands {
         #[arg(short, long)]
         service: Option<String>,
 
-        command: Vec<String>
+        command: Vec<String>,
     },
     // Dump a database to a file or to stdout
     //ExportDb,
@@ -72,8 +75,21 @@ pub enum Commands {
 const CONFIG_FILE_NAME_LOCAL: &str = ".dev-cli.yml";
 const CONFIG_FILE_NAME_PROJECT: &str = ".dev-cli.dist.yml";
 
+lazy_static! {
+    static ref CONFIG_FILE_PATH_GLOBAL: std::path::PathBuf = {
+        [
+            dirs::config_dir().unwrap(),
+            std::path::PathBuf::from("dev-cli/"),
+            std::path::PathBuf::from(".dev-cli.yml"),
+        ]
+        .iter()
+        .collect()
+    };
+}
+
 #[tokio::main]
 async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
+    println! {"Global config at {}", CONFIG_FILE_PATH_GLOBAL.clone().into_os_string().into_string().unwrap()};
     // Parse the command line arguments and stop here if there's an error
     let cli = Cli::parse();
 
@@ -87,7 +103,7 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
                 project_root_tmp = Some(filepath.parent().unwrap().to_path_buf());
             }
             Some(filepath)
-        },
+        }
         None => None,
     };
     let project_config_path = match utils::path::find_recursively(&cwd, CONFIG_FILE_NAME_PROJECT) {
@@ -96,18 +112,19 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
                 project_root_tmp = Some(filepath.parent().unwrap().to_path_buf());
             }
             Some(filepath)
-        },
+        }
         None => None,
     };
     let project_root = match project_root_tmp {
         Some(path) => path,
         None => {
-            println!("Could not find a project root. Please add a {} or {} to your project root", CONFIG_FILE_NAME_LOCAL, CONFIG_FILE_NAME_PROJECT);
+            println!(
+                "Could not find a project root. Please add a {} or {} to your project root",
+                CONFIG_FILE_NAME_LOCAL, CONFIG_FILE_NAME_PROJECT
+            );
             sysexits::ExitCode::OsErr.exit()
-        },
+        }
     };
-    // TODO: Get config based on global, user, project, and local config files
-
     // Connect to Docker
     // TODO: Check if command requires a docker connection before connecting
     let docker = bollard::Docker::connect_with_local_defaults()?;
@@ -117,7 +134,7 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
             println!("Docker doesn't seem to be turned on ({})", error);
             sysexits::ExitCode::OsErr.exit()
             //Err(anyhow::anyhow!("Docker doesn't seem to be turned on ({})", error))
-        },
+        }
     };
 
     // Find and read the docker `compose.yml` file
@@ -126,7 +143,10 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
     let docker_compose = if docker_compose_config_path.is_file() {
         utils::docker_compose::DockerCompose::new(docker_compose_config_path)
     } else {
-        println!("Could not find a docker compose file in the project root ({})", docker_compose_config_path.display());
+        println!(
+            "Could not find a docker compose file in the project root ({})",
+            docker_compose_config_path.display()
+        );
         sysexits::ExitCode::OsErr.exit()
     };
     let docker_compose_config = match docker_compose.config() {
@@ -134,25 +154,27 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
         Err(error) => {
             println!("Could not read the docker compose file ({})", error);
             sysexits::ExitCode::OsErr.exit()
-        },
+        }
     };
 
     use Commands::*;
     match cli.command {
         Some(command) => {
             match &command {
-                Exec { service, command } => commands::exec::run(docker_compose, service.to_owned(), command.to_vec()),
+                Exec { service, command } => {
+                    commands::exec::run(docker_compose, service.to_owned(), command.to_vec())
+                }
                 //Stop { remove_data: false } => println!("Stopping without removing data..."),
                 //Stop { remove_data: true } => println!("Stopping with removing data..."),
                 _ => {
                     println!("Command not implemented yet: {:?}", command);
                     sysexits::ExitCode::OsErr.exit()
-                },
+                }
             }
-        },
+        }
         None => {
             commands::exec::run(docker_compose, cli.service.to_owned(), cli.exec_command);
-        },
+        }
     }
 
     Ok(sysexits::ExitCode::Ok)
