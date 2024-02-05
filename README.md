@@ -26,7 +26,16 @@ What things you need to install the software and how to install them
 
 ### Usage (development)
 
-`cargo run -- <command>`
+```shell
+cargo run -- <command>
+```
+
+To test the production build, create a link:
+
+```shell
+cargo build --release
+ln -s $(pwd)/target/release/dev-cli /usr/local/bin/dev-cli
+```
 
 ## Built With
 

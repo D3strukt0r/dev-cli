@@ -1,0 +1,6 @@
+global_default: overwritten
+project_default: test
+local_default: "overwrite in .dev-cli.yml"
+some_deep_setting:
+  setting_one: 1
+  setting_two: 2

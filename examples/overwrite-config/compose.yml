@@ -1,0 +1,16 @@
+services:
+  nginx:
+    image: nginx
+    networks:
+      - default
+      - dev-cli_web
+    labels:
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}0.rule=Host(`${COMPOSE_PROJECT_NAME}.${TLD}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}0.middlewares=redirect-to-https
+
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.rule=Host(`${COMPOSE_PROJECT_NAME}.${TLD}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.tls=true
+
+networks:
+  dev-cli_web:
+    external: true
