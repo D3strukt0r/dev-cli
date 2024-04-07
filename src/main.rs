@@ -5,6 +5,9 @@ mod commands;
 mod utils;
 
 use clap::Parser;
+use assert_cmd::prelude::*; // Add methods on commands
+use predicates::prelude::*;
+use crate::utils::app_config::AppConfig; // Used for writing assertions
 
 // Parameters for config
 // - docker-compose-path: Path to the docker-compose file (default: {project-root}/compose.yml)
@@ -124,6 +127,7 @@ lazy_static! {
 #[tokio::main]
 async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
     println! {"Global config at {}", CONFIG_FILE_PATH_GLOBAL.clone().into_os_string().into_string().unwrap()};
+
     // Parse the command line arguments and stop here if there's an error
     let cli = Cli::parse();
 
@@ -152,13 +156,19 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
     let project_root = match project_root_tmp {
         Some(path) => path,
         None => {
-            println!(
+            eprintln!(
                 "Could not find a project root. Please add a {} or {} to your project root",
                 CONFIG_FILE_NAME_LOCAL, CONFIG_FILE_NAME_PROJECT
             );
             sysexits::ExitCode::OsErr.exit()
         }
     };
+    println!("project root: {:?}", &project_root);
+    let app_config = utils::app_config::AppConfig::merge_from_project_root(&project_root);
+    match app_config {
+        Ok(conf) => println!("config loaded: {:?}", conf),
+        Err(e) => eprintln!("error loading app config: {:?}", e)
+    }
     // Connect to Docker
     // TODO: Check if command requires a docker connection before connecting
     let docker = bollard::Docker::connect_with_local_defaults()?;
@@ -195,7 +205,7 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
     match cli.command {
         Some(command) => {
             match &command {
-                Exec { service, command } => {
+                Exec { service, command, .. } => {
                     commands::exec::run(docker_compose, service.to_owned(), command.to_vec())
                 }
                 //Stop { remove_data: false } => println!("Stopping without removing data..."),
@@ -212,4 +222,14 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
     }
 
     Ok(sysexits::ExitCode::Ok)
+}
+
+#[test]
+fn no_project_root() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = std::process::Command::cargo_bin("dev-cli")?;
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("Could not find a project root"));
+
+    Ok(())
 }
