@@ -193,9 +193,9 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
     use Commands::*;
     match cli.command {
         Some(command) => {
-            match &command {
-                Exec { service, command, .. } => {
-                    commands::exec::run(docker_compose, service.to_owned(), command.to_vec())
+            match command {
+                Exec { service, user, command } => {
+                    commands::exec::run(docker_compose, service, user, command.to_vec())
                 }
                 //Stop { remove_data: false } => println!("Stopping without removing data..."),
                 //Stop { remove_data: true } => println!("Stopping with removing data..."),
@@ -206,7 +206,7 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
             }
         }
         None => {
-            commands::exec::run(docker_compose, cli.service.to_owned(), cli.exec_command);
+            commands::exec::run(docker_compose, cli.service.to_owned(), None, cli.exec_command);
         }
     }
 
