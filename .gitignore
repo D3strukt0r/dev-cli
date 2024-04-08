@@ -246,3 +246,5 @@ $RECYCLE.BIN/
 # End of https://www.toptal.com/developers/gitignore/api/git,rust,linux,macos,windows,phpstorm,rust-analyzer,visualstudiocode
 
 .dev-cli.yml
+/.dev-cli.dist.yml
+/compose.yml
