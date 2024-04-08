@@ -4,10 +4,12 @@ extern crate lazy_static;
 mod commands;
 mod utils;
 
+use std::path::PathBuf;
 use clap::Parser;
 use assert_cmd::prelude::*; // Add methods on commands
 use predicates::prelude::*;
-use crate::utils::app_config::AppConfig; // Used for writing assertions
+use crate::utils::app_config::AppConfig;
+use crate::utils::path::find_recursively; // Used for writing assertions
 
 // Parameters for config
 // - docker-compose-path: Path to the docker-compose file (default: {project-root}/compose.yml)
@@ -135,34 +137,21 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
     // parent directory to determine the project root
     let cwd = std::env::current_dir()?;
     let mut project_root_tmp: Option<std::path::PathBuf> = None;
-    let local_config_path = match utils::path::find_recursively(&cwd, CONFIG_FILE_NAME_LOCAL) {
-        Some(filepath) => {
-            if project_root_tmp.is_none() {
-                project_root_tmp = Some(filepath.parent().unwrap().to_path_buf());
-            }
-            Some(filepath)
-        }
-        None => None,
-    };
-    let project_config_path = match utils::path::find_recursively(&cwd, CONFIG_FILE_NAME_PROJECT) {
-        Some(filepath) => {
-            if project_root_tmp.is_none() {
-                project_root_tmp = Some(filepath.parent().unwrap().to_path_buf());
-            }
-            Some(filepath)
-        }
-        None => None,
-    };
-    let project_root = match project_root_tmp {
-        Some(path) => path,
-        None => {
-            eprintln!(
-                "Could not find a project root. Please add a {} or {} to your project root",
+
+    let project_root = match  (
+        find_recursively(&cwd, CONFIG_FILE_NAME_LOCAL),
+        find_recursively(&cwd, CONFIG_FILE_NAME_PROJECT)
+    ) {
+        (Some(filepath), _) => filepath,
+        (_, Some(filepath)) => filepath,
+        (None, None) => {
+            eprintln!( "Could not find a project root. Please add a {} or {} to your project root",
                 CONFIG_FILE_NAME_LOCAL, CONFIG_FILE_NAME_PROJECT
             );
             sysexits::ExitCode::OsErr.exit()
         }
     };
+
     println!("project root: {:?}", &project_root);
     let app_config = utils::app_config::AppConfig::merge_from_project_root(&project_root);
     match app_config {
