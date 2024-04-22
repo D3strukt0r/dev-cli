@@ -128,6 +128,8 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
+    utils::setup::check_and_install();
+
     println! {"Global config at {}", CONFIG_FILE_PATH_GLOBAL.clone().into_os_string().into_string().unwrap()};
 
     // Parse the command line arguments and stop here if there's an error
