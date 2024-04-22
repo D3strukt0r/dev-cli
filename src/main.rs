@@ -41,7 +41,7 @@ struct Cli {
     exec_command: Vec<String>,
 }
 
-#[derive(Debug, clap::Subcommand, PartialEq)]
+#[derive(Debug, Clone, clap::Subcommand, PartialEq)]
 pub enum Commands {
     /// Initialize a new project for dev-cli using pre-defined templates
     Init,
@@ -108,6 +108,23 @@ pub enum Commands {
     //Service,
     // Create a database snapshot for one or more projects.
     //Snapshot,
+}
+
+impl Commands {
+    fn requires_docker(&self) -> bool {
+        match self {
+            Commands::Start
+            | Commands::Stop{ .. }
+            | Commands::Restart
+            | Commands::Poweroff
+            | Commands::Exec { .. }
+            | Commands::Run { .. }
+            | Commands::Shell
+            | Commands::Status
+            | Commands::GlobalStatus => true,
+            _ => false
+        }
+    }
 }
 
 // Global constants for config file names

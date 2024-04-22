@@ -28,7 +28,7 @@ impl AppConfig {
         config_file.push(".dev-cli.yml");
         println!("config file: {:?}", &config_file);
         let mut dist_config_file = project_root.clone();
-        dist_config_file.push(".dev-cli.yml.dist");
+        dist_config_file.push("../../.dev-cli.dist.yml");
         println!("dist config file: {:?}", &dist_config_file);
 
         let config: AppConfig
