@@ -145,7 +145,19 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
-    utils::setup::check_and_install();
+    // Connect to Docker
+    // TODO: Check if command requires a docker connection before connecting
+    let docker = bollard::Docker::connect_with_local_defaults()?;
+    match docker.ping().await {
+        Ok(result) => result,
+        Err(error) => {
+            println!("Docker doesn't seem to be turned on ({})", error);
+            sysexits::ExitCode::OsErr.exit()
+            //Err(anyhow::anyhow!("Docker doesn't seem to be turned on ({})", error))
+        }
+    };
+
+    utils::setup::check_and_install(&docker).await;
 
     println! {"Global config at {}", CONFIG_FILE_PATH_GLOBAL.clone().into_os_string().into_string().unwrap()};
 
@@ -177,17 +189,6 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
         Ok(conf) => println!("config loaded: {:?}", conf),
         Err(e) => eprintln!("error loading app config: {:?}", e)
     }
-    // Connect to Docker
-    // TODO: Check if command requires a docker connection before connecting
-    let docker = bollard::Docker::connect_with_local_defaults()?;
-    match docker.ping().await {
-        Ok(result) => result,
-        Err(error) => {
-            println!("Docker doesn't seem to be turned on ({})", error);
-            sysexits::ExitCode::OsErr.exit()
-            //Err(anyhow::anyhow!("Docker doesn't seem to be turned on ({})", error))
-        }
-    };
 
     // Find and read the docker `compose.yml` file
     // TODO: Check if command requires knowledge of the compose config
@@ -208,6 +209,14 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
             sysexits::ExitCode::OsErr.exit()
         }
     };
+
+    //let images = &docker.list_images(Some(bollard::image::ListImagesOptions::<String> {
+    //    all: true,
+    //    ..Default::default()
+    //})).await.unwrap();
+    //for image in images {
+    //    println!("-> {:?}", image.id);
+    //}
 
     use Commands::*;
     match cli.command {
