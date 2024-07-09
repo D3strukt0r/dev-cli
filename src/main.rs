@@ -3,13 +3,17 @@ extern crate lazy_static;
 
 mod commands;
 mod utils;
+mod lib;
 
 use std::path::PathBuf;
 use clap::Parser;
 use assert_cmd::prelude::*; // Add methods on commands
 use predicates::prelude::*;
+use dev_cli::{check_if_docker_required_and_ping, docker_running};
 use crate::utils::app_config::AppConfig;
 use crate::utils::path::find_recursively; // Used for writing assertions
+use lib::{Cli, Commands};
+use crate::lib::is_docker_required;
 
 // Parameters for config
 // - docker-compose-path: Path to the docker-compose file (default: {project-root}/compose.yml)
@@ -24,108 +28,6 @@ use crate::utils::path::find_recursively; // Used for writing assertions
 //    },
 //    "clear-cache": {commands: [{container: "php", user: "www-data, command: "rm -rf var/cache/*"}]},
 // ])
-
-#[derive(Debug, clap::Parser)]
-#[command(version, about = "A CLI for managing local Docker development environments", long_about = None)]
-struct Cli {
-    /// The name of the service to run the command in. If omitted, the first service in the project will be used.
-    #[arg(short, long)]
-    service: Option<String>,
-
-    /// Run the command in offline mode. This will prevent dev-cli from trying to connect to the internet.
-    offline: Option<bool>,
-
-    #[command(subcommand)]
-    command: Option<Commands>,
-
-    exec_command: Vec<String>,
-}
-
-#[derive(Debug, Clone, clap::Subcommand, PartialEq)]
-pub enum Commands {
-    /// Initialize a new project for dev-cli using pre-defined templates
-    Init,
-    /// Starts a docker compose project
-    Start,
-    /// Stop and remove the containers of a project. Does not lose or harm anything unless you add --remove-data.
-    Stop {
-        #[arg(long, default_value("false"))]
-        remove_data: bool,
-    },
-    /// Stops, removes and starts a project again
-    Restart,
-    /// Stop all projects and dev-cli containers (Traefik, etc.)
-    Poweroff,
-    /// Execute a shell command in the container for a service.
-    Exec {
-        #[arg(short, long)]
-        service: Option<String>,
-
-        #[arg(short, long)]
-        user: Option<String>,
-
-        command: Vec<String>,
-    },
-    /// Run a command defined in the config file
-    Run {
-        command: Vec<String>,
-    },
-    /// Starts a shell session in the container for a service
-    Shell,
-    /// Launches the default URL in the default browser
-    Launch,
-    /// Show the status of the containers of this project
-    Status,
-    /// Show the status of all projects that ran through dev-cli
-    GlobalStatus,
-
-
-    // Removes items dev-cli has created
-    //Clean,
-    // Generate the autocompletion script for the specified shell
-    //Completion,
-    // Create or modify a dev-cli project configuration in the current directory
-    //Config,
-    // Remove all project information (including database) for an existing project
-    //Delete,
-    // Get a detailed description of a running dev-cli project
-    //Describe,
-    // Dump a database to a file or to stdout
-    //ExportDb,
-    // Get/Download a 3rd party add-on (service, provider, etc.)
-    //Get,
-    // Manage your hostfile entries.
-    //Hostname,
-    // Import a SQL dump file into the project
-    //ImportDb,
-    // Pull the uploaded files directory of an existing project to the default public upload directory of your project
-    //ImportFiles,
-    // List projects
-    //List,
-    // Get the logs from your running services.
-    //Logs,
-    // Add or remove, enable or disable extra services
-    //Service,
-    // Create a database snapshot for one or more projects.
-    //Snapshot,
-}
-
-impl Commands {
-    fn requires_docker(&self) -> bool {
-        match self {
-            Commands::Start
-            | Commands::Stop{ .. }
-            | Commands::Restart
-            | Commands::Poweroff
-            | Commands::Exec { .. }
-            | Commands::Run { .. }
-            | Commands::Shell
-            | Commands::Status
-            | Commands::GlobalStatus => true,
-            _ => false
-        }
-    }
-}
 
 // Global constants for config file names
 const CONFIG_FILE_NAME_LOCAL: &str = ".dev-cli.yml";
@@ -145,24 +47,20 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
+    // Parse the command line arguments and stop here if there's an error
+    let cli = Cli::parse();
+
     // Connect to Docker
-    // TODO: Check if command requires a docker connection before connecting
     let docker = bollard::Docker::connect_with_local_defaults()?;
-    match docker.ping().await {
-        Ok(result) => result,
-        Err(error) => {
-            println!("Docker doesn't seem to be turned on ({})", error);
-            sysexits::ExitCode::OsErr.exit()
-            //Err(anyhow::anyhow!("Docker doesn't seem to be turned on ({})", error))
-        }
-    };
+
+    // Check if command is set and requires a docker connection before connecting or if exec_command is set
+    if is_docker_required(&docker, &cli.command, &cli.exec_command) {
+        docker_running(&docker).await;
+    }
 
     utils::setup::check_and_install(&docker).await;
 
     println! {"Global config at {}", CONFIG_FILE_PATH_GLOBAL.clone().into_os_string().into_string().unwrap()};
-
-    // Parse the command line arguments and stop here if there's an error
-    let cli = Cli::parse();
 
     // Find .dev-cli.yml/.dev-cli.dist.yml in the current directory or any
     // parent directory to determine the project root
