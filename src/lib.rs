@@ -103,25 +103,15 @@ impl Commands {
     }
 }
 
-pub async fn is_docker_required(
-    docker: &Docker,
+pub fn is_docker_required(
     command: &Option<Commands>,
     exec_command: &Vec<String>,
 ) -> bool {
-    match command {
-        Some(command) => {
-            if command.requires_docker() {
-                true
-            } else {
-                false
-            }
-        }
+    let required_by_command = match command {
+        Some(command) => command.requires_docker(),
         None => false,
-    }
-    if exec_command.len() > 0 {
-        true
-    }
-    false
+    };
+    required_by_command || exec_command.len() > 0
 }
 
 pub async fn docker_running(docker: &Docker) -> String {

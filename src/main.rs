@@ -5,15 +5,14 @@ mod commands;
 mod utils;
 mod lib;
 
-use std::path::PathBuf;
 use clap::Parser;
-use assert_cmd::prelude::*; // Add methods on commands
-use predicates::prelude::*;
-use dev_cli::{check_if_docker_required_and_ping, docker_running};
-use crate::utils::app_config::AppConfig;
 use crate::utils::path::find_recursively; // Used for writing assertions
 use lib::{Cli, Commands};
-use crate::lib::is_docker_required;
+use crate::lib::{is_docker_required, docker_running};
+
+use assert_cmd::prelude::*; // Add methods on commands
+use predicates::prelude::*;
+
 
 // Parameters for config
 // - docker-compose-path: Path to the docker-compose file (default: {project-root}/compose.yml)
@@ -54,7 +53,7 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
     let docker = bollard::Docker::connect_with_local_defaults()?;
 
     // Check if command is set and requires a docker connection before connecting or if exec_command is set
-    if is_docker_required(&docker, &cli.command, &cli.exec_command) {
+    if is_docker_required(&cli.command, &cli.exec_command) {
         docker_running(&docker).await;
     }
 
