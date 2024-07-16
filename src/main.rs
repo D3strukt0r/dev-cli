@@ -5,10 +5,11 @@ mod commands;
 mod utils;
 mod lib;
 
+use bollard::Docker;
 use clap::Parser;
 use crate::utils::path::find_recursively; // Used for writing assertions
 use lib::{Cli, Commands};
-use crate::lib::{is_docker_required, docker_running};
+use crate::lib::{is_docker_required, docker_running, check_and_setup_system, check_and_setup_docker};
 
 use assert_cmd::prelude::*; // Add methods on commands
 use predicates::prelude::*;
@@ -49,15 +50,19 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
     // Parse the command line arguments and stop here if there's an error
     let cli = Cli::parse();
 
+    // Check that the system is ready to run the commands
+    check_and_setup_system();
+
     // Connect to Docker
-    let docker = bollard::Docker::connect_with_local_defaults()?;
+    let docker = Docker::connect_with_local_defaults()?;
 
     // Check if command is set and requires a docker connection before connecting or if exec_command is set
     if is_docker_required(&cli.command, &cli.exec_command) {
         docker_running(&docker).await;
+        check_and_setup_docker(&docker).await;
     }
 
-    utils::setup::check_and_install(&docker).await;
+    sysexits::ExitCode::OsErr.exit();
 
     println! {"Global config at {}", CONFIG_FILE_PATH_GLOBAL.clone().into_os_string().into_string().unwrap()};
 

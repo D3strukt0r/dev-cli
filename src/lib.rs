@@ -1,5 +1,8 @@
 use bollard::Docker;
 use clap::{Parser, Subcommand};
+use anyhow::Result;
+use std::collections::HashMap;
+use bollard::network::{CreateNetworkOptions, ListNetworksOptions};
 
 #[derive(Debug, Parser)]
 #[command(version, about = "A CLI for managing local Docker development environments", long_about = None)]
@@ -121,6 +124,127 @@ pub async fn docker_running(docker: &Docker) -> String {
             println!("Docker doesn't seem to be turned on ({})", error);
             sysexits::ExitCode::OsErr.exit()
             //Err(anyhow::anyhow!("Docker doesn't seem to be turned on ({})", error))
+        }
+    }
+}
+
+pub fn check_and_setup_system() {
+    // Check that Homebrew is installed
+    //let command = "brew --version";
+    //let homebrew_check = subprocess::Exec::shell(command).capture().unwrap();
+    //if !homebrew_check.exit_status.success() {
+    //    println!("Homebrew is not installed");
+    //    println!("Installing Homebrew...");
+    //    let command = "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"";
+    //    let homebrew_install = subprocess::Exec::cmd(command).capture().unwrap();
+    //    if homebrew_install.exit_status.success() {
+    //        println!("Homebrew installed successfully");
+    //    } else {
+    //        println!("Homebrew installation failed");
+    //        std::process::exit(match homebrew_install.exit_status {
+    //            subprocess::ExitStatus::Exited(code) => code as i32,
+    //            subprocess::ExitStatus::Signaled(code) => code as i32,
+    //            subprocess::ExitStatus::Other(code) => code,
+    //            subprocess::ExitStatus::Undetermined => 1,
+    //        });
+    //    }
+    //}
+
+    // Check that Docker is installed
+    //let command = "docker --version";
+    //let docker_check = subprocess::Exec::shell(command).capture().unwrap();
+    //if !docker_check.exit_status.success() {
+    //    println!("Docker is not installed");
+    //    println!("Installing Docker...");
+    //    let command = "brew install docker";
+    //    let docker_install = subprocess::Exec::shell(command).capture().unwrap();
+    //    if docker_install.exit_status.success() {
+    //        println!("Docker installed successfully");
+    //    } else {
+    //        println!("Docker installation failed");
+    //        std::process::exit(match docker_install.exit_status {
+    //            subprocess::ExitStatus::Exited(code) => code as i32,
+    //            subprocess::ExitStatus::Signaled(code) => code as i32,
+    //            subprocess::ExitStatus::Other(code) => code,
+    //            subprocess::ExitStatus::Undetermined => 1,
+    //        });
+    //    }
+    //}
+
+    // Check that Git is installed
+    //let command = "git --version";
+    //let git_check = subprocess::Exec::shell(command).capture().unwrap();
+    //if !git_check.exit_status.success() {
+    //    println!("Git is not installed");
+    //    println!("Installing Git...");
+    //    let command = "brew install git";
+    //    let git_install = subprocess::Exec::shell(command).capture().unwrap();
+    //    if git_install.exit_status.success() {
+    //        println!("Git installed successfully");
+    //    } else {
+    //        println!("Git installation failed");
+    //        std::process::exit(match git_install.exit_status {
+    //            subprocess::ExitStatus::Exited(code) => code as i32,
+    //            subprocess::ExitStatus::Signaled(code) => code as i32,
+    //            subprocess::ExitStatus::Other(code) => code,
+    //            subprocess::ExitStatus::Undetermined => 1,
+    //        });
+    //    }
+    //}
+
+    // Check that jq is installed
+    //let command = "jq --version";
+    //let jq_check = subprocess::Exec::shell(command).capture().unwrap();
+    //if !jq_check.exit_status.success() {
+    //    println!("jq is not installed");
+    //    println!("Installing jq...");
+    //    let command = "brew install jq";
+    //    let jq_install = subprocess::Exec::shell(command).capture().unwrap();
+    //    if jq_install.exit_status.success() {
+    //        println!("jq installed successfully");
+    //    } else {
+    //        println!("jq installation failed");
+    //        std::process::exit(match jq_install.exit_status {
+    //            subprocess::ExitStatus::Exited(code) => code as i32,
+    //            subprocess::ExitStatus::Signaled(code) => code as i32,
+    //            subprocess::ExitStatus::Other(code) => code,
+    //            subprocess::ExitStatus::Undetermined => 1,
+    //        });
+    //    }
+    //}
+}
+
+pub async fn check_and_setup_docker(docker: &bollard::Docker) {
+    // Check that the docker network "dev-cli-web" exists using bollard
+    let mut list_networks_filters = HashMap::new();
+    list_networks_filters.insert("name", vec!["dev-cli-web"]);
+    let config = ListNetworksOptions {
+        filters: list_networks_filters,
+    };
+    let networks = docker.list_networks(Some(config)).await;
+
+    match networks {
+        Ok(networks) => {
+            if networks.is_empty() {
+                println!("Creating the network 'dev-cli-web'...");
+                let config = CreateNetworkOptions {
+                    name: "dev-cli-web",
+                    ..Default::default()
+                };
+
+                let network_created = docker.create_network(config).await;
+                match network_created {
+                    Ok(_) => println!("Network 'dev-cli-web' created successfully"),
+                    Err(error) => {
+                        println!("Could not create the network 'dev-cli-web': {}", error);
+                        sysexits::ExitCode::OsErr.exit()
+                    }
+                }
+            }
+        }
+        Err(error) => {
+            println!("Could not list networks: {}", error);
+            sysexits::ExitCode::OsErr.exit()
         }
     }
 }
