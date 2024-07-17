@@ -67,7 +67,6 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
     // Find .dev-cli.yml/.dev-cli.dist.yml in the current directory or any
     // parent directory to determine the project root
     let cwd = std::env::current_dir()?;
-    let project_root_tmp: Option<PathBuf> = None;
 
     let project_root = match  (
         find_recursively(&cwd, CONFIG_FILE_NAME_LOCAL),
@@ -102,7 +101,7 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
         );
         sysexits::ExitCode::OsErr.exit()
     };
-    let docker_compose_config = match docker_compose.config() {
+    let _docker_compose_config = match docker_compose.config() {
         Ok(config) => config,
         Err(error) => {
             println!("Could not read the docker compose file ({})", error);
