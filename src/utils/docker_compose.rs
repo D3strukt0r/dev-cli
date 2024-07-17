@@ -57,10 +57,13 @@ impl DockerCompose {
             //    .args(["/C", "echo hello"])
             //    .output()
         } else {
-            // if user.is_some() {
-            //     cmd.arg("--user").arg(user.unwrap());
-            // }
-            subprocess::Exec::cmd("docker").arg("compose").arg("exec")
+            let mut cmd = subprocess::Exec::cmd("docker").arg("compose").arg("exec");
+            cmd = match user {
+                Some(user) => cmd
+                    .arg("--user").arg(user),
+                None => cmd,
+            };
+            cmd
                 .arg(service_to_exec)
                 .args(&command)
                 .cwd(&self.file.parent().unwrap())
