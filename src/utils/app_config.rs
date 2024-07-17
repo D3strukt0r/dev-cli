@@ -1,7 +1,7 @@
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use serde::{Serialize, Deserialize};
-use serde_merge::{omerge, tmerge};
+use serde_merge::omerge;
 use anyhow::Result;
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -3,17 +3,15 @@ extern crate lazy_static;
 
 mod commands;
 mod utils;
-mod lib;
 
 use bollard::Docker;
 use clap::Parser;
+use std::path::{PathBuf, Path};
 use crate::utils::path::find_recursively; // Used for writing assertions
-use lib::{Cli, Commands};
-use crate::lib::{is_docker_required, docker_running, check_and_setup_system, check_and_setup_docker};
+use crate::utils::general::{Cli, Commands, is_docker_required, docker_running, check_and_setup_system, check_and_setup_docker};
 
 use assert_cmd::prelude::*; // Add methods on commands
 use predicates::prelude::*;
-
 
 // Parameters for config
 // - docker-compose-path: Path to the docker-compose file (default: {project-root}/compose.yml)
@@ -34,11 +32,11 @@ const CONFIG_FILE_NAME_LOCAL: &str = ".dev-cli.yml";
 const CONFIG_FILE_NAME_PROJECT: &str = ".dev-cli.dist.yml";
 
 lazy_static! {
-    static ref CONFIG_FILE_PATH_GLOBAL: std::path::PathBuf = {
+    static ref CONFIG_FILE_PATH_GLOBAL: PathBuf = {
         [
             dirs::config_dir().unwrap(),
-            std::path::PathBuf::from("dev-cli/"),
-            std::path::PathBuf::from(".dev-cli.yml"),
+            PathBuf::from("dev-cli"),
+            PathBuf::from(".dev-cli.yml"),
         ]
         .iter()
         .collect()
@@ -62,14 +60,12 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
         check_and_setup_docker(&docker).await;
     }
 
-    sysexits::ExitCode::OsErr.exit();
-
     println! {"Global config at {}", CONFIG_FILE_PATH_GLOBAL.clone().into_os_string().into_string().unwrap()};
 
     // Find .dev-cli.yml/.dev-cli.dist.yml in the current directory or any
     // parent directory to determine the project root
     let cwd = std::env::current_dir()?;
-    let mut project_root_tmp: Option<std::path::PathBuf> = None;
+    let mut project_root_tmp: Option<PathBuf> = None;
 
     let project_root = match  (
         find_recursively(&cwd, CONFIG_FILE_NAME_LOCAL),
@@ -94,7 +90,7 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
 
     // Find and read the docker `compose.yml` file
     // TODO: Check if command requires knowledge of the compose config
-    let docker_compose_config_path = std::path::Path::new(&project_root).join("compose.yml");
+    let docker_compose_config_path = Path::new(&project_root).join("compose.yml");
     let docker_compose = if docker_compose_config_path.is_file() {
         utils::docker_compose::DockerCompose::new(docker_compose_config_path)
     } else {

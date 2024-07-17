@@ -1,6 +1,5 @@
 use bollard::Docker;
 use clap::{Parser, Subcommand};
-use anyhow::Result;
 use std::collections::HashMap;
 use bollard::network::{CreateNetworkOptions, ListNetworksOptions};
 
