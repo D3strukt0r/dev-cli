@@ -10,7 +10,9 @@ use std::path::{PathBuf, Path};
 use crate::utils::path::find_recursively; // Used for writing assertions
 use crate::utils::general::{Cli, Commands, is_docker_required, docker_running, check_and_setup_system, check_and_setup_docker};
 
+#[allow(unused)]
 use assert_cmd::prelude::*; // Add methods on commands
+#[allow(unused)]
 use predicates::prelude::*;
 
 // Parameters for config
@@ -65,7 +67,7 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
     // Find .dev-cli.yml/.dev-cli.dist.yml in the current directory or any
     // parent directory to determine the project root
     let cwd = std::env::current_dir()?;
-    let mut project_root_tmp: Option<PathBuf> = None;
+    let project_root_tmp: Option<PathBuf> = None;
 
     let project_root = match  (
         find_recursively(&cwd, CONFIG_FILE_NAME_LOCAL),
@@ -121,7 +123,7 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
         Some(command) => {
             match command {
                 Exec { service, user, command } => {
-                    commands::exec::run(docker_compose, service, user, command.to_vec())
+                    commands::exec::run(docker_compose, service, user, command.to_vec())?
                 }
                 //Stop { remove_data: false } => println!("Stopping without removing data..."),
                 //Stop { remove_data: true } => println!("Stopping with removing data..."),
@@ -132,7 +134,7 @@ async fn main() -> Result<sysexits::ExitCode, Box<dyn std::error::Error>> {
             }
         }
         None => {
-            commands::exec::run(docker_compose, cli.service.to_owned(), None, cli.exec_command);
+            commands::exec::run(docker_compose, cli.service.to_owned(), None, cli.exec_command)?;
         }
     }
 

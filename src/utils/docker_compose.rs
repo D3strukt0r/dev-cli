@@ -41,7 +41,7 @@ impl DockerCompose {
         config
     }
 
-    pub fn exec(&self, service: Option<String>, command: Vec<String>) -> Result<(), Box<dyn std::error::Error>>{
+    pub fn exec(&self, service: Option<String>, user: Option<String>, command: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         let service_to_exec = match service {
             Some(service) => service,
             None => {
@@ -57,6 +57,9 @@ impl DockerCompose {
             //    .args(["/C", "echo hello"])
             //    .output()
         } else {
+            // if user.is_some() {
+            //     cmd.arg("--user").arg(user.unwrap());
+            // }
             subprocess::Exec::cmd("docker").arg("compose").arg("exec")
                 .arg(service_to_exec)
                 .args(&command)
